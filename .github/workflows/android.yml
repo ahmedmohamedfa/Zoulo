@@ -1,0 +1,57 @@
+name: Build Zoulo APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Create Web Directory
+        run: |
+          mkdir -p www
+          cp index.html www/ 2>/dev/null || cp *.html www/index.html
+
+      - name: Initialize Capacitor Project
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli
+          npx cap init "Zoulo" "com.zoulo.app" --web-dir=www
+          npm install @capacitor/android
+          npx cap add android
+
+      - name: Build Android Studio Project
+        run: |
+          npx cap sync android
+          cd android && ./gradlew assembleRelease
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release-unsigned.apk zoulo-app.apk
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: "Zoulo Application v1.0.0"
+          files: zoulo-app.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
